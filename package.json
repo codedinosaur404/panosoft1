@@ -1,0 +1,23 @@
+{
+  "name": "panosoft1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "NODE_ENV=production node ./build.js",
+    "watch": "elm-live src/Main.elm --debug --open",
+    "postinstall": "elm-tooling install"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "elm": "^0.19.1-5"
+  },
+  "devDependencies": {
+    "elm-live": "^4.0.2",
+    "elm-tooling": "^1.14.0",
+    "esbuild": "^0.19.2",
+    "esbuild-plugin-elm": "^0.0.12"
+  }
+}
