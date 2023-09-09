@@ -3,6 +3,7 @@ module Main exposing (main)
 import Accessibility exposing (..)
 import Browser
 import Dict exposing (Dict)
+import Html.Attributes exposing (src)
 import Http
 import Json.Decode as Decode exposing (Decoder, dict, list, string)
 import Json.Decode.Pipeline as D
@@ -53,7 +54,7 @@ update msg model =
                     ( { model
                         | dogBreedResponse = response
                         , dogBreeds = result.dogBreedsApiResponse
-                    }
+                      }
                     , Cmd.none
                     )
 
@@ -75,20 +76,41 @@ payloadDecoder =
         |> D.required "message" (dict (list string))
 
 
+keysList : Dict String (List String) -> List String
+keysList dict =
+    Dict.keys dict
 
--- VIEW
+
+getSubBreeds : String -> Dict String (List String) -> Maybe (List String)
+getSubBreeds breed collection =
+    Dict.get breed collection
 
 
 view : Model -> Html Msg
 view model =
     div []
-        [ ul []
-            [ li [] []
-            ]
+        [ model.dogBreeds
+            |> keysList
+            |> List.sort
+            |> List.map dogBreedItemView
+            |> ul []
         ]
 
 
 
+dogBreedItemView : String -> Html msg
+dogBreedItemView breed =
+    li [] [ text breed ]
+
+
+dogDetailsView : String -> Html msg
+dogDetailsView dogBreed =
+    img "" [ src dogBreed ]
+
+
+
+-- this should probably be a decorative image, information in the adjacent text
+--https://www.w3.org/WAI/tutorials/images/decorative/
 -- PROGRAM
 
 
