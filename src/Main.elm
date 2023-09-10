@@ -89,6 +89,7 @@ update msg model =
                     , Cmd.none
                     )
 
+                --ToDo develop Error case messagin views
                 _ ->
                     ( model, Cmd.none )
 
@@ -133,7 +134,7 @@ calculateTotalPages imageUrls =
     imageUrls
         |> List.length
         |> toFloat
-        |> (/) (toFloat itemsPerPage)
+        |> (\v -> v / toFloat itemsPerPage)
         |> ceiling
 
 
@@ -194,21 +195,25 @@ view : Model -> Html Msg
 view model =
     main_ []
         [ h2 [ class "text-4xl text-center" ] [ text "Dog Breeds" ]
-        , aside [ class "w-64 " ]
-            [ div [ class "p-4" ]
-                [ model.dogBreeds
-                    |> keysList
-                    |> List.sort
-                    |> List.map (\x -> dogBreedItemView x (Dict.get x model.dogBreeds))
-                    |> ul []
+        , div [ class "flex flex-row items-start justify-center" ]
+            [ aside [ class "w-64" ]
+                [ div [ class "p-4" ]
+                    [ model.dogBreeds
+                        |> keysList
+                        |> List.sort
+                        |> List.map (\x -> dogBreedItemView x (Dict.get x model.dogBreeds))
+                        |> ul []
+                    ]
                 ]
-            ]
-        , div [ class "p-4" ]
-            [ div []
-                [ div [ class "grid grid-cols-5 gap-3 mb-3" ] []
-                ]
+            , viewMaybe dogBreedDetailView (getDogBreedDetail model.currentBreed model.dogBreeds)
             ]
         ]
+
+
+getDogBreedDetail : Maybe String -> Dict String DogBreedDetail -> Maybe DogBreedDetail
+getDogBreedDetail currentBreed dogBreeds =
+    currentBreed
+        |> Maybe.andThen (\breed -> Dict.get breed dogBreeds)
 
 
 dogBreedItemView : String -> Maybe DogBreedDetail -> Html Msg
@@ -251,16 +256,21 @@ exampleBreedUrls =
 
 dogBreedDetailView : DogBreedDetail -> Html Msg
 dogBreedDetailView detail =
-    div []
+    div [ class "flex flex-col flex-wrap items-center" ]
         [ div [ class "flex-auto flex-wrap" ]
             [ exampleBreedUrls
                 |> List.map subBreedImageView
                 |> ul []
             ]
-        , span [] [ text <| "Total Image Count" ++ (String.fromInt <| List.length detail.imageUrls) ]
         , div []
-            [ button [ disabled <| detail.currentPage == 1 ] [ text "back" ]
-            , button [ disabled <| detail.currentPage == detail.totalPages ] [ text "forward" ]
+            [ span [ class "mr-2" ] [ text <| "Total Image Count:" ]
+            , span [] [ text <| (String.fromInt <| List.length detail.imageUrls) ]
+            ]
+        , div []
+            [ button [ disabled <| detail.currentPage == 1 || detail.breedDetailResponse == RemoteData.Loading ] [ text "back" ]
+            , span [ class "mx-4" ] [ text <| "Current Page: " ++ String.fromInt detail.currentPage ]
+            , span [ class "mx-4" ] [ text <| "Total Pages: " ++ String.fromInt detail.totalPages ]
+            , button [ disabled <| detail.currentPage == detail.totalPages || detail.breedDetailResponse == RemoteData.Loading ] [ text "forward" ]
             ]
         ]
 
@@ -268,7 +278,7 @@ dogBreedDetailView detail =
 subBreedImageView : String -> Html msg
 subBreedImageView imageUrl =
     li []
-        [ div [ class "w-1/5 p-4" ] [ img "" [ src imageUrl ] ]
+        [ div [] [ img "" [ src imageUrl ] ]
         ]
 
 
