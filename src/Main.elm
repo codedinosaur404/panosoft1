@@ -6,6 +6,7 @@ import Dict exposing (Dict)
 import Html as CoreHtml
 import Html.Attributes exposing (class, src)
 import Html.Events exposing (onClick)
+import Html.Extra as Html exposing (viewMaybe)
 import Http
 import Json.Decode as Decode exposing (Decoder, dict, list, string)
 import Json.Decode.Pipeline as D
@@ -130,11 +131,11 @@ keysList dict =
 view : Model -> Html Msg
 view model =
     div []
-        [ h2 [ class "text-red-800" ] [ text "H2" ]
+        [ h2 [ class "text-xl" ] [ text "Dog Breeds" ]
         , model.dogBreeds
             |> keysList
             |> List.sort
-            |> List.map dogBreedItemView
+            |> List.map (\x -> dogBreedItemView x (Dict.get x model.dogBreeds))
             |> ul []
         ]
 
@@ -143,9 +144,32 @@ view model =
 -- using core html to add onClick. The notes say to exclude the complexity
 
 
-dogBreedItemView : String -> Html Msg
-dogBreedItemView breed =
-    li [ class "text-blue-300" ] [ CoreHtml.a [ onClick <| ChangeBreed breed ] [ text breed ] ]
+dogBreedItemView : String -> Maybe DogBreedDetail -> Html Msg
+dogBreedItemView breed breedDetails =
+    li [ class "hover:cursor-pointer" ]
+        [ CoreHtml.a
+            [ onClick <| ChangeBreed breed ]
+            [ text breed ]
+        , div []
+            [ viewMaybe breedDetailsView breedDetails
+            ]
+        ]
+
+
+breedDetailsView : DogBreedDetail -> Html msg
+breedDetailsView breedDetail =
+    if List.isEmpty breedDetail.breeds then
+        Html.nothing
+
+    else
+        breedDetail.breeds
+            |> List.map subBreedItemView
+            |> ul []
+
+
+subBreedItemView : String -> Html msg
+subBreedItemView subBreed =
+    li [ class "ml-4" ] [ text subBreed ]
 
 
 
