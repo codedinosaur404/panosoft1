@@ -16,3 +16,4 @@ See https://dog.ceo/dog-api/documentation/ for general Api documentation. Write 
     * Always indicate to the user when data is loading and disallow interactions while loading.
     * Do not worry about fancy styling. Fancy styling is extra credit.  
     * In a real application these states would be represented as routes but that complexity has been excluded here to reduce the burden of plumbing code.
+
