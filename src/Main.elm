@@ -17,10 +17,9 @@ import RemoteData exposing (RemoteData(..), WebData)
 -- MODEL
 
 
-type alias Payload =
+type alias DogBreeApiRespnse =
     { dogBreedsApiResponse : Dict String (List String)
     }
-
 
 type alias DogBreedDetail =
     { breeds : List String
@@ -37,14 +36,14 @@ initialDogBreedDetail subBreeds =
 
 type alias Model =
     { dogBreeds : Dict String DogBreedDetail
-    , dogBreedResponse : WebData Payload
+    , dogBreedResponse : WebData DogBreeApiRespnse
     , currentBreed : Maybe String
     }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( initialModel, getDogBreeds )
+    ( initialModel, fetchDogBreeds )
 
 
 initialModel : Model
@@ -55,13 +54,12 @@ initialModel =
     }
 
 
-
 -- UPDATE
 
 
 type Msg
-    = GotDogBreeds (WebData Payload)
-    | GotSpecificBreed (WebData ())
+    = GotDogBreeds (WebData DogBreeApiRespnse)
+    | GotBreedImageUrls (WebData (List String))
     | ChangeBreed String
 
 
@@ -82,44 +80,66 @@ update msg model =
                     ( model, Cmd.none )
 
         ChangeBreed breed ->
-            ( { model | currentBreed = Just breed }, Cmd.none )
+            let
+               breedDetails = Dict.get breed model.dogBreeds 
+            in
+            
+            ( { model | currentBreed = Just breed }, fetchDogBreedImages breed)
 
-        GotSpecificBreed _ ->
-            ( model, Cmd.none )
+        GotBreedImageUrls response ->
+            case response of
+                RemoteData.Success result ->
+                    ( model, Cmd.none )
+
+                _ -> 
+                    ( model, Cmd.none )
+
+updateImageUrls : List String -> DogBreedDetail -> DogBreedDetail
+updateImageUrls urls record =
+    { record | imageUrls = urls}
+
+insertDogBreedDetail : (String, List String) -> Dict String DogBreedDetail -> Dict String DogBreedDetail 
+insertDogBreedDetail (breed, imageUrls) dogBreeds =
+    case Dict.get breed dogBreeds of
+        Just details ->
+            let
+                updatedDetails = updateImageUrls imageUrls details
+            in
+            Dict.insert breed updatedDetails dogBreeds
+            
+        Nothing ->
+            dogBreeds
 
 
 transformDictionary : Dict String (List String) -> Dict String DogBreedDetail
-transformDictionary originalDictionary =
+transformDictionary dogBreeds =
     Dict.foldl
         (\key values acc ->
             Dict.insert key (initialDogBreedDetail values) acc
         )
         Dict.empty
-        originalDictionary
+        dogBreeds
 
 
-getDogBreeds : Cmd Msg
-getDogBreeds =
+fetchDogBreeds : Cmd Msg
+fetchDogBreeds =
     Http.get
         { url = "https://dog.ceo/api/breeds/list/all"
         , expect = payloadDecoder |> Http.expectJson (RemoteData.fromResult >> GotDogBreeds)
         }
 
 
-
-{--
-getSpecificBreed : String -> Cmd Msg
-getSpecificBreed breed =
+fetchDogBreedImages : String -> Cmd Msg
+fetchDogBreedImages breed =
     Http.get 
-    { url = ""
-    , expect = breedDecoder |> Http.expectJson (RemoteData.fromResult >> GotSpecificBreed)
+    { url = "https://dog.ceo/api/breed/" ++ breed ++ "/images"
+    , expect = (list string) |> Http.expectJson (RemoteData.fromResult >> GotBreedImageUrls)
     }
---}
 
 
-payloadDecoder : Decoder Payload
+payloadDecoder : Decoder DogBreeApiRespnse
 payloadDecoder =
-    Decode.succeed Payload
+    Decode.succeed DogBreeApiRespnse
         |> D.required "message" (dict (list string))
 
 
@@ -151,25 +171,29 @@ dogBreedItemView breed breedDetails =
             [ onClick <| ChangeBreed breed ]
             [ text breed ]
         , div []
-            [ viewMaybe breedDetailsView breedDetails
+            [ viewMaybe (breedDetailsView breed) breedDetails
             ]
         ]
 
 
-breedDetailsView : DogBreedDetail -> Html msg
-breedDetailsView breedDetail =
+breedDetailsView : String -> DogBreedDetail -> Html Msg
+breedDetailsView breed breedDetail =
     if List.isEmpty breedDetail.breeds then
         Html.nothing
 
     else
         breedDetail.breeds
-            |> List.map subBreedItemView
+            |> List.map (subBreedItemView breed)
             |> ul []
 
 
-subBreedItemView : String -> Html msg
-subBreedItemView subBreed =
-    li [ class "ml-4" ] [ text subBreed ]
+subBreedItemView : String -> String -> Html Msg
+subBreedItemView breed subBreed =
+    li [ class "ml-4" ]
+        [ CoreHtml.a
+            [ onClick <| ChangeBreed breed ]
+            [ text subBreed ]
+        ]
 
 
 
@@ -194,9 +218,9 @@ main =
         { init = init
         , update = update
         , view =
-            \m ->
+            \model ->
                 { title = "Dog Breeds"
-                , body = [ view m ]
+                , body = [ view model ]
                 }
         , subscriptions = \_ -> Sub.none
         }
