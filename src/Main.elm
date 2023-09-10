@@ -3,7 +3,9 @@ module Main exposing (main)
 import Accessibility exposing (..)
 import Browser
 import Dict exposing (Dict)
+import Html as CoreHtml
 import Html.Attributes exposing (src)
+import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode exposing (Decoder, dict, list, string)
 import Json.Decode.Pipeline as D
@@ -22,6 +24,8 @@ type alias Payload =
 type alias Model =
     { dogBreeds : Dict String (List String)
     , dogBreedResponse : WebData Payload
+    , currentBreed : Maybe String
+    , currentPage : Int
     }
 
 
@@ -34,6 +38,8 @@ initialModel : Model
 initialModel =
     { dogBreeds = Dict.empty
     , dogBreedResponse = RemoteData.NotAsked
+    , currentBreed = Nothing
+    , currentPage = 1
     }
 
 
@@ -43,6 +49,7 @@ initialModel =
 
 type Msg
     = GotDogBreeds (WebData Payload)
+    | ChangeBreed String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -60,6 +67,9 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+        ChangeBreed breed ->
+            ( { model | currentBreed = Just breed, currentPage = 1 }, Cmd.none )
 
 
 getDogBreeds : Cmd Msg
@@ -81,6 +91,10 @@ keysList dict =
     Dict.keys dict
 
 
+
+-- get keys is sorted lowest to highest
+
+
 getSubBreeds : String -> Dict String (List String) -> Maybe (List String)
 getSubBreeds breed collection =
     Dict.get breed collection
@@ -98,9 +112,19 @@ view model =
 
 
 
-dogBreedItemView : String -> Html msg
+-- using core html to add onClick. The notes say to exclude the complexity
+
+
+dogBreedItemView : String -> Html Msg
 dogBreedItemView breed =
-    li [] [ text breed ]
+    li [] [ CoreHtml.a [ onClick <| ChangeBreed breed ] [ text breed ] ]
+
+
+
+{--
+    this should probably be a decorative image, information in the adjacent text
+    https://www.w3.org/WAI/tutorials/images/decorative/
+--}
 
 
 dogDetailsView : String -> Html msg
@@ -109,8 +133,6 @@ dogDetailsView dogBreed =
 
 
 
--- this should probably be a decorative image, information in the adjacent text
---https://www.w3.org/WAI/tutorials/images/decorative/
 -- PROGRAM
 
 
