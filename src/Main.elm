@@ -1,10 +1,10 @@
 module Main exposing (main)
 
-import Accessibility exposing (Html, div, h2, img, li, text, ul)
+import Accessibility exposing (Html, button, div, h2, img, li, span, text, ul)
 import Browser
 import Dict exposing (Dict)
-import Html as CoreHtml
-import Html.Attributes exposing (class, src)
+import Html as CoreHtml exposing (aside, main_)
+import Html.Attributes exposing (class, disabled, src)
 import Html.Events exposing (onClick)
 import Html.Extra as Html exposing (viewMaybe)
 import Http
@@ -27,17 +27,23 @@ type alias ImageUrlResponse =
     }
 
 
+itemsPerPage : Int
+itemsPerPage =
+    20
+
+
 type alias DogBreedDetail =
     { subBreeds : List String
     , imageUrls : List String
     , currentPage : Int
+    , totalPages : Int
     , breedDetailResponse : WebData ImageUrlResponse
     }
 
 
 initialDogBreedDetail : List String -> DogBreedDetail
 initialDogBreedDetail subBreeds =
-    DogBreedDetail subBreeds [] 1 RemoteData.NotAsked
+    DogBreedDetail subBreeds [] 1 1 RemoteData.NotAsked
 
 
 type alias Model =
@@ -112,10 +118,23 @@ updateImageUrls : WebData ImageUrlResponse -> DogBreedDetail -> DogBreedDetail
 updateImageUrls response record =
     case response of
         RemoteData.Success result ->
-            { record | imageUrls = result.imageUrls, breedDetailResponse = response }
+            { record
+                | imageUrls = result.imageUrls
+                , breedDetailResponse = response
+                , totalPages = calculateTotalPages result.imageUrls
+            }
 
         _ ->
             record
+
+
+calculateTotalPages : List String -> Int
+calculateTotalPages imageUrls =
+    imageUrls
+        |> List.length
+        |> toFloat
+        |> (/) (toFloat itemsPerPage)
+        |> ceiling
 
 
 insertDogBreedDetail : ( String, WebData ImageUrlResponse ) -> Dict String DogBreedDetail -> Dict String DogBreedDetail
@@ -173,22 +192,33 @@ keysList dict =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ h2 [ class "text-xl" ] [ text "Dog Breeds" ]
-        , model.dogBreeds
-            |> keysList
-            |> List.sort
-            |> List.map (\x -> dogBreedItemView x (Dict.get x model.dogBreeds))
-            |> ul []
+    main_ []
+        [ h2 [ class "text-4xl text-center" ] [ text "Dog Breeds" ]
+        , aside [ class "w-64 " ]
+            [ div [ class "p-4" ]
+                [ model.dogBreeds
+                    |> keysList
+                    |> List.sort
+                    |> List.map (\x -> dogBreedItemView x (Dict.get x model.dogBreeds))
+                    |> ul []
+                ]
+            ]
+        , div [ class "p-4" ]
+            [ div []
+                [ div [ class "grid grid-cols-5 gap-3 mb-3" ] []
+                ]
+            ]
         ]
 
 
 dogBreedItemView : String -> Maybe DogBreedDetail -> Html Msg
 dogBreedItemView breed breedDetails =
-    li [ class "hover:cursor-pointer" ]
+    li [ class "bg-gray-50" ]
         [ CoreHtml.a
-            [ onClick <| ChangeBreed breed ]
-            [ text breed ]
+            [ class "flex items-center p-2 class hover:cursor-pointer"
+            , onClick <| ChangeBreed breed
+            ]
+            [ span [ class "ml-3" ] [ text breed ] ]
         , div []
             [ viewMaybe (breedDetailsView breed) breedDetails
             ]
@@ -205,10 +235,40 @@ breedDetailsView breed breedDetail =
 
 subBreedItemView : String -> String -> Html Msg
 subBreedItemView breed subBreed =
-    li [ class "ml-4" ]
+    li [ class "ml-10" ]
         [ CoreHtml.a
             [ onClick <| ChangeBreed breed ]
             [ text subBreed ]
+        ]
+
+
+exampleBreedUrls : List String
+exampleBreedUrls =
+    [ "https://images.dog.ceo/breeds/akita/An_Akita_Inu_resting.jpg"
+    , "https://images.dog.ceo/breeds/akita/Japaneseakita.jpg"
+    ]
+
+
+dogBreedDetailView : DogBreedDetail -> Html Msg
+dogBreedDetailView detail =
+    div []
+        [ div [ class "flex-auto flex-wrap" ]
+            [ exampleBreedUrls
+                |> List.map subBreedImageView
+                |> ul []
+            ]
+        , span [] [ text <| "Total Image Count" ++ (String.fromInt <| List.length detail.imageUrls) ]
+        , div []
+            [ button [ disabled <| detail.currentPage == 1 ] [ text "back" ]
+            , button [ disabled <| detail.currentPage == detail.totalPages ] [ text "forward" ]
+            ]
+        ]
+
+
+subBreedImageView : String -> Html msg
+subBreedImageView imageUrl =
+    li []
+        [ div [ class "w-1/5 p-4" ] [ img "" [ src imageUrl ] ]
         ]
 
 
@@ -217,14 +277,6 @@ subBreedItemView breed subBreed =
     this should probably be a decorative image, information in the adjacent text
     https://www.w3.org/WAI/tutorials/images/decorative/
 --}
-
-
-dogDetailsView : String -> Html msg
-dogDetailsView dogBreed =
-    img "" [ src dogBreed ]
-
-
-
 -- PROGRAM
 
 
