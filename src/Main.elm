@@ -1,10 +1,10 @@
 module Main exposing (main)
 
-import Accessibility exposing (Html, div, img, li, text, ul)
+import Accessibility exposing (Html, div, h2, img, li, text, ul)
 import Browser
 import Dict exposing (Dict)
 import Html as CoreHtml
-import Html.Attributes exposing (src)
+import Html.Attributes exposing (class, src)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode exposing (Decoder, dict, list, string)
@@ -122,15 +122,6 @@ payloadDecoder =
         |> D.required "message" (dict (list string))
 
 
-breedDetailsDecoder : Decoder DogBreedDetail
-breedDetailsDecoder =
-    Decode.succeed DogBreedDetail
-        |> D.hardcoded []
-        |> D.hardcoded []
-        |> D.hardcoded 1
-        |> D.hardcoded RemoteData.NotAsked
-
-
 keysList : Dict String DogBreedDetail -> List String
 keysList dict =
     Dict.keys dict
@@ -139,7 +130,8 @@ keysList dict =
 view : Model -> Html Msg
 view model =
     div []
-        [ model.dogBreeds
+        [ h2 [ class "text-red-800" ] [ text "H2" ]
+        , model.dogBreeds
             |> keysList
             |> List.sort
             |> List.map dogBreedItemView
@@ -153,7 +145,7 @@ view model =
 
 dogBreedItemView : String -> Html Msg
 dogBreedItemView breed =
-    li [] [ CoreHtml.a [ onClick <| ChangeBreed breed ] [ text breed ] ]
+    li [ class "text-blue-300" ] [ CoreHtml.a [ onClick <| ChangeBreed breed ] [ text breed ] ]
 
 
 
@@ -174,9 +166,13 @@ dogDetailsView dogBreed =
 
 main : Program () Model Msg
 main =
-    Browser.element
+    Browser.document
         { init = init
         , update = update
-        , view = view
+        , view =
+            \m ->
+                { title = "Dog Breeds"
+                , body = [ view m ]
+                }
         , subscriptions = \_ -> Sub.none
         }
