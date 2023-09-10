@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-import Accessibility exposing (..)
+import Accessibility exposing (Html, div, img, li, text, ul)
 import Browser
 import Dict exposing (Dict)
 import Html as CoreHtml
@@ -21,11 +21,23 @@ type alias Payload =
     }
 
 
+type alias DogBreedDetail =
+    { breeds : List String
+    , imageUrls : List String
+    , currentPage : Int
+    , breedDetailResponse : WebData ()
+    }
+
+
+initialDogBreedDetail : List String -> DogBreedDetail
+initialDogBreedDetail subBreeds =
+    DogBreedDetail subBreeds [] 1 RemoteData.NotAsked
+
+
 type alias Model =
-    { dogBreeds : Dict String (List String)
+    { dogBreeds : Dict String DogBreedDetail
     , dogBreedResponse : WebData Payload
     , currentBreed : Maybe String
-    , currentPage : Int
     }
 
 
@@ -39,7 +51,6 @@ initialModel =
     { dogBreeds = Dict.empty
     , dogBreedResponse = RemoteData.NotAsked
     , currentBreed = Nothing
-    , currentPage = 1
     }
 
 
@@ -49,6 +60,7 @@ initialModel =
 
 type Msg
     = GotDogBreeds (WebData Payload)
+    | GotSpecificBreed (WebData ())
     | ChangeBreed String
 
 
@@ -60,7 +72,7 @@ update msg model =
                 RemoteData.Success result ->
                     ( { model
                         | dogBreedResponse = response
-                        , dogBreeds = result.dogBreedsApiResponse
+                        , dogBreeds = transformDictionary result.dogBreedsApiResponse
                       }
                     , Cmd.none
                     )
@@ -69,7 +81,20 @@ update msg model =
                     ( model, Cmd.none )
 
         ChangeBreed breed ->
-            ( { model | currentBreed = Just breed, currentPage = 1 }, Cmd.none )
+            ( { model | currentBreed = Just breed }, Cmd.none )
+
+        GotSpecificBreed _ ->
+            ( model, Cmd.none )
+
+
+transformDictionary : Dict String (List String) -> Dict String DogBreedDetail
+transformDictionary originalDictionary =
+    Dict.foldl
+        (\key values acc ->
+            Dict.insert key (initialDogBreedDetail values) acc
+        )
+        Dict.empty
+        originalDictionary
 
 
 getDogBreeds : Cmd Msg
@@ -80,24 +105,35 @@ getDogBreeds =
         }
 
 
+
+{--
+getSpecificBreed : String -> Cmd Msg
+getSpecificBreed breed =
+    Http.get 
+    { url = ""
+    , expect = breedDecoder |> Http.expectJson (RemoteData.fromResult >> GotSpecificBreed)
+    }
+--}
+
+
 payloadDecoder : Decoder Payload
 payloadDecoder =
     Decode.succeed Payload
         |> D.required "message" (dict (list string))
 
 
-keysList : Dict String (List String) -> List String
+breedDetailsDecoder : Decoder DogBreedDetail
+breedDetailsDecoder =
+    Decode.succeed DogBreedDetail
+        |> D.hardcoded []
+        |> D.hardcoded []
+        |> D.hardcoded 1
+        |> D.hardcoded RemoteData.NotAsked
+
+
+keysList : Dict String DogBreedDetail -> List String
 keysList dict =
     Dict.keys dict
-
-
-
--- get keys is sorted lowest to highest
-
-
-getSubBreeds : String -> Dict String (List String) -> Maybe (List String)
-getSubBreeds breed collection =
-    Dict.get breed collection
 
 
 view : Model -> Html Msg
