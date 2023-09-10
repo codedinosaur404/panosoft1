@@ -28,7 +28,7 @@ type alias ImageUrlResponse =
 
 
 type alias DogBreedDetail =
-    { breeds : List String
+    { subBreeds : List String
     , imageUrls : List String
     , currentPage : Int
     , breedDetailResponse : WebData ImageUrlResponse
@@ -88,15 +88,16 @@ update msg model =
 
         ChangeBreed breed ->
             let
-                exactyOneApiRequestPerBreed = 
-                    Dict.get breed model.dogBreeds 
-                        |> Maybe.map (\detail -> detail.breedDetailResponse == RemoteData.NotAsked) 
+                exactyOneApiRequestPerBreed =
+                    Dict.get breed model.dogBreeds
+                        |> Maybe.map (\detail -> detail.breedDetailResponse == RemoteData.NotAsked)
                         |> Maybe.withDefault True
             in
-            if  exactyOneApiRequestPerBreed then
+            if exactyOneApiRequestPerBreed then
                 ( { model | currentBreed = Just breed }, fetchDogBreedImages breed )
+
             else
-                ( { model | currentBreed = Just breed }, Cmd.none)
+                ( { model | currentBreed = Just breed }, Cmd.none )
 
         GotBreedImageUrls response ->
             case model.currentBreed of
@@ -196,7 +197,8 @@ dogBreedItemView breed breedDetails =
 
 breedDetailsView : String -> DogBreedDetail -> Html Msg
 breedDetailsView breed breedDetail =
-    breedDetail.breeds
+    breedDetail.subBreeds
+        |> List.sort
         |> List.map (subBreedItemView breed)
         |> ul []
 
