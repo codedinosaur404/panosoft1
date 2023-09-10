@@ -17,15 +17,21 @@ import RemoteData exposing (RemoteData(..), WebData)
 -- MODEL
 
 
-type alias DogBreeApiRespnse =
+type alias DogBreedApiRespnse =
     { dogBreedsApiResponse : Dict String (List String)
     }
+
+
+type alias ImageUrlResponse =
+    { imageUrls : List String
+    }
+
 
 type alias DogBreedDetail =
     { breeds : List String
     , imageUrls : List String
     , currentPage : Int
-    , breedDetailResponse : WebData ()
+    , breedDetailResponse : WebData ImageUrlResponse
     }
 
 
@@ -36,7 +42,7 @@ initialDogBreedDetail subBreeds =
 
 type alias Model =
     { dogBreeds : Dict String DogBreedDetail
-    , dogBreedResponse : WebData DogBreeApiRespnse
+    , dogBreedResponse : WebData DogBreedApiRespnse
     , currentBreed : Maybe String
     }
 
@@ -54,12 +60,13 @@ initialModel =
     }
 
 
+
 -- UPDATE
 
 
 type Msg
-    = GotDogBreeds (WebData DogBreeApiRespnse)
-    | GotBreedImageUrls (WebData (List String))
+    = GotDogBreeds (WebData DogBreedApiRespnse)
+    | GotBreedImageUrls (WebData ImageUrlResponse)
     | ChangeBreed String
 
 
@@ -81,34 +88,43 @@ update msg model =
 
         ChangeBreed breed ->
             let
-               breedDetails = Dict.get breed model.dogBreeds 
+                exactyOneApiRequestPerBreed = 
+                    Dict.get breed model.dogBreeds 
+                        |> Maybe.map (\detail -> detail.breedDetailResponse == RemoteData.NotAsked) 
+                        |> Maybe.withDefault True
             in
-            
-            ( { model | currentBreed = Just breed }, fetchDogBreedImages breed)
+            if  exactyOneApiRequestPerBreed then
+                ( { model | currentBreed = Just breed }, fetchDogBreedImages breed )
+            else
+                ( { model | currentBreed = Just breed }, Cmd.none)
 
         GotBreedImageUrls response ->
-            case response of
-                RemoteData.Success result ->
+            case model.currentBreed of
+                Just breed ->
+                    ( { model | dogBreeds = insertDogBreedDetail ( breed, response ) model.dogBreeds }, Cmd.none )
+
+                Nothing ->
                     ( model, Cmd.none )
 
-                _ -> 
-                    ( model, Cmd.none )
 
-updateImageUrls : List String -> DogBreedDetail -> DogBreedDetail
-updateImageUrls urls record =
-    { record | imageUrls = urls}
+updateImageUrls : WebData ImageUrlResponse -> DogBreedDetail -> DogBreedDetail
+updateImageUrls response record =
+    case response of
+        RemoteData.Success result ->
+            { record | imageUrls = result.imageUrls, breedDetailResponse = response }
 
-insertDogBreedDetail : (String, List String) -> Dict String DogBreedDetail -> Dict String DogBreedDetail 
-insertDogBreedDetail (breed, imageUrls) dogBreeds =
-    case Dict.get breed dogBreeds of
-        Just details ->
-            let
-                updatedDetails = updateImageUrls imageUrls details
-            in
-            Dict.insert breed updatedDetails dogBreeds
-            
-        Nothing ->
-            dogBreeds
+        _ ->
+            record
+
+
+insertDogBreedDetail : ( String, WebData ImageUrlResponse ) -> Dict String DogBreedDetail -> Dict String DogBreedDetail
+insertDogBreedDetail ( breed, imageReponse ) dogBreeds =
+    dogBreeds
+        |> Dict.update breed
+            (\maybeDetails ->
+                maybeDetails
+                    |> Maybe.map (\dogDetails -> updateImageUrls imageReponse dogDetails)
+            )
 
 
 transformDictionary : Dict String (List String) -> Dict String DogBreedDetail
@@ -125,22 +141,28 @@ fetchDogBreeds : Cmd Msg
 fetchDogBreeds =
     Http.get
         { url = "https://dog.ceo/api/breeds/list/all"
-        , expect = payloadDecoder |> Http.expectJson (RemoteData.fromResult >> GotDogBreeds)
+        , expect = dogBreedApiDecoder |> Http.expectJson (RemoteData.fromResult >> GotDogBreeds)
         }
 
 
 fetchDogBreedImages : String -> Cmd Msg
 fetchDogBreedImages breed =
-    Http.get 
-    { url = "https://dog.ceo/api/breed/" ++ breed ++ "/images"
-    , expect = (list string) |> Http.expectJson (RemoteData.fromResult >> GotBreedImageUrls)
-    }
+    Http.get
+        { url = "https://dog.ceo/api/breed/" ++ breed ++ "/images"
+        , expect = imageUrlDecoder |> Http.expectJson (RemoteData.fromResult >> GotBreedImageUrls)
+        }
 
 
-payloadDecoder : Decoder DogBreeApiRespnse
-payloadDecoder =
-    Decode.succeed DogBreeApiRespnse
+dogBreedApiDecoder : Decoder DogBreedApiRespnse
+dogBreedApiDecoder =
+    Decode.succeed DogBreedApiRespnse
         |> D.required "message" (dict (list string))
+
+
+imageUrlDecoder : Decoder ImageUrlResponse
+imageUrlDecoder =
+    Decode.succeed ImageUrlResponse
+        |> D.required "message" (list string)
 
 
 keysList : Dict String DogBreedDetail -> List String
@@ -160,10 +182,6 @@ view model =
         ]
 
 
-
--- using core html to add onClick. The notes say to exclude the complexity
-
-
 dogBreedItemView : String -> Maybe DogBreedDetail -> Html Msg
 dogBreedItemView breed breedDetails =
     li [ class "hover:cursor-pointer" ]
@@ -178,13 +196,9 @@ dogBreedItemView breed breedDetails =
 
 breedDetailsView : String -> DogBreedDetail -> Html Msg
 breedDetailsView breed breedDetail =
-    if List.isEmpty breedDetail.breeds then
-        Html.nothing
-
-    else
-        breedDetail.breeds
-            |> List.map (subBreedItemView breed)
-            |> ul []
+    breedDetail.breeds
+        |> List.map (subBreedItemView breed)
+        |> ul []
 
 
 subBreedItemView : String -> String -> Html Msg
