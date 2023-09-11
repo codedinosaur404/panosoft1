@@ -1,4 +1,4 @@
-module Main exposing (main)
+module Main exposing (getIndicesFromPage, main, slice)
 
 import Accessibility exposing (Html, button, div, h2, img, li, span, text, ul)
 import Browser
@@ -6,10 +6,11 @@ import Dict exposing (Dict)
 import Html as CoreHtml exposing (aside, main_)
 import Html.Attributes exposing (class, disabled, src)
 import Html.Events exposing (onClick)
-import Html.Extra as Html exposing (viewMaybe)
+import Html.Extra as Html exposing (viewIf, viewMaybe)
 import Http
 import Json.Decode as Decode exposing (Decoder, dict, list, string)
 import Json.Decode.Pipeline as D
+import List.Extra exposing (getAt)
 import RemoteData exposing (RemoteData(..), WebData)
 
 
@@ -66,6 +67,11 @@ initialModel =
     }
 
 
+type Direction
+    = Forward
+    | Backward
+
+
 
 -- UPDATE
 
@@ -74,6 +80,7 @@ type Msg
     = GotDogBreeds (WebData DogBreedApiRespnse)
     | GotBreedImageUrls (WebData ImageUrlResponse)
     | ChangeBreed String
+    | Navigate Direction
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -89,7 +96,7 @@ update msg model =
                     , Cmd.none
                     )
 
-                --ToDo develop Error case messagin views
+                --ToDo develop Error case messaing views
                 _ ->
                     ( model, Cmd.none )
 
@@ -114,6 +121,29 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
+        Navigate direction ->
+            case direction of
+                Forward ->
+                    case model.currentBreed of
+                        Just breed ->
+                            ( { model | dogBreeds = updatePageNumber (\x -> x + 1) breed model.dogBreeds }, Cmd.none )
+
+                        Nothing ->
+                            ( model, Cmd.none )
+
+                Backward ->
+                    case model.currentBreed of
+                        Just breed ->
+                            ( { model | dogBreeds = updatePageNumber (\x -> x - 1) breed model.dogBreeds }, Cmd.none )
+
+                        Nothing ->
+                            ( model, Cmd.none )
+
+
+adjustPageNumber : (Int -> Int) -> { r | currentPage : Int } -> { r | currentPage : Int }
+adjustPageNumber func record =
+    { record | currentPage = func record.currentPage }
+
 
 updateImageUrls : WebData ImageUrlResponse -> DogBreedDetail -> DogBreedDetail
 updateImageUrls response record =
@@ -134,7 +164,7 @@ calculateTotalPages imageUrls =
     imageUrls
         |> List.length
         |> toFloat
-        |> (\v -> v / toFloat itemsPerPage)
+        |> (\v2 -> v2 / toFloat itemsPerPage)
         |> ceiling
 
 
@@ -145,6 +175,15 @@ insertDogBreedDetail ( breed, imageReponse ) dogBreeds =
             (\maybeDetails ->
                 maybeDetails
                     |> Maybe.map (\dogDetails -> updateImageUrls imageReponse dogDetails)
+            )
+
+
+updatePageNumber : (Int -> Int) -> String -> Dict String DogBreedDetail -> Dict String DogBreedDetail
+updatePageNumber func breed dogBreeds =
+    dogBreeds
+        |> Dict.update breed
+            (\maybeDetails ->
+                maybeDetails |> Maybe.map (\dogDetails -> adjustPageNumber func dogDetails)
             )
 
 
@@ -247,18 +286,12 @@ subBreedItemView breed subBreed =
         ]
 
 
-exampleBreedUrls : List String
-exampleBreedUrls =
-    [ "https://images.dog.ceo/breeds/akita/An_Akita_Inu_resting.jpg"
-    , "https://images.dog.ceo/breeds/akita/Japaneseakita.jpg"
-    ]
-
-
 dogBreedDetailView : DogBreedDetail -> Html Msg
 dogBreedDetailView detail =
     div [ class "flex flex-col flex-wrap items-center" ]
         [ div [ class "flex-auto flex-wrap" ]
-            [ exampleBreedUrls
+            [ detail
+                |> getImageSlice
                 |> List.map subBreedImageView
                 |> ul []
             ]
@@ -266,27 +299,64 @@ dogBreedDetailView detail =
             [ span [ class "mr-2" ] [ text <| "Total Image Count:" ]
             , span [] [ text <| (String.fromInt <| List.length detail.imageUrls) ]
             ]
-        , div []
-            [ button [ disabled <| detail.currentPage == 1 || detail.breedDetailResponse == RemoteData.Loading ] [ text "back" ]
-            , span [ class "mx-4" ] [ text <| "Current Page: " ++ String.fromInt detail.currentPage ]
-            , span [ class "mx-4" ] [ text <| "Total Pages: " ++ String.fromInt detail.totalPages ]
-            , button [ disabled <| detail.currentPage == detail.totalPages || detail.breedDetailResponse == RemoteData.Loading ] [ text "forward" ]
-            ]
+        , viewIf (List.length detail.imageUrls > itemsPerPage)
+            (div []
+                [ button
+                    [ disabled <| detail.currentPage == 1 || detail.breedDetailResponse == RemoteData.Loading
+                    , onClick <| Navigate Backward
+                    ]
+                    [ text "back" ]
+                , span [ class "mx-4" ] [ text <| "Current Page: " ++ String.fromInt detail.currentPage ]
+                , button
+                    [ disabled <| detail.currentPage == detail.totalPages || detail.breedDetailResponse == RemoteData.Loading
+                    , onClick <| Navigate Forward
+                    ]
+                    [ text "forward" ]
+                ]
+            )
         ]
+
+
+getImageSlice : DogBreedDetail -> List String
+getImageSlice detail =
+    let
+        ( start, end ) =
+            getIndicesFromPage detail.currentPage
+    in
+    detail.imageUrls
+        |> slice start end
+
+
+getIndicesFromPage : Int -> ( Int, Int )
+getIndicesFromPage pageNumber =
+    if pageNumber == 1 then
+        ( pageNumber - 1, itemsPerPage - 1 )
+
+    else
+        ( (pageNumber - 1) * itemsPerPage, (pageNumber - 1) * itemsPerPage + itemsPerPage )
+
+
+slice : Int -> Int -> List String -> List String
+slice start end list =
+    let
+        startIndex =
+            max 0 start
+
+        endIndex =
+            min (List.length list) end
+
+        rangeSlice =
+            List.range startIndex endIndex
+    in
+    List.filterMap (\index -> getAt index list) rangeSlice
 
 
 subBreedImageView : String -> Html msg
 subBreedImageView imageUrl =
-    li []
-        [ div [] [ img "" [ src imageUrl ] ]
-        ]
+    li [] [ span [] [ img "" [ src imageUrl ] ] ]
 
 
 
-{--
-    this should probably be a decorative image, information in the adjacent text
-    https://www.w3.org/WAI/tutorials/images/decorative/
---}
 -- PROGRAM
 
 
