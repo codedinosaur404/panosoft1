@@ -16,11 +16,11 @@ indicesTest =
         , test "given page 2 returns 20-40" <|
             \_ ->
                 getIndicesFromPage 2
-                    |> Expect.equal ( 20, 40 )
-        , test "given page 3 return 40-60" <|
+                    |> Expect.equal ( 20, 39 )
+        , test "given page 3 return 40-59" <|
             \_ ->
                 getIndicesFromPage 3
-                    |> Expect.equal ( 40, 60 )
+                    |> Expect.equal ( 40, 59 )
         ]
 
 

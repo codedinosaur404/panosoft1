@@ -293,7 +293,7 @@ dogBreedDetailView detail =
             [ detail
                 |> getImageSlice
                 |> List.map subBreedImageView
-                |> ul []
+                |> ul [ class "flex flex-wrap" ]
             ]
         , div []
             [ span [ class "mr-2" ] [ text <| "Total Image Count:" ]
@@ -333,7 +333,7 @@ getIndicesFromPage pageNumber =
         ( pageNumber - 1, itemsPerPage - 1 )
 
     else
-        ( (pageNumber - 1) * itemsPerPage, (pageNumber - 1) * itemsPerPage + itemsPerPage )
+        ( (pageNumber - 1) * itemsPerPage, (pageNumber - 1) * itemsPerPage + itemsPerPage - 1 )
 
 
 slice : Int -> Int -> List String -> List String
@@ -353,7 +353,7 @@ slice start end list =
 
 subBreedImageView : String -> Html msg
 subBreedImageView imageUrl =
-    li [] [ span [] [ img "" [ src imageUrl ] ] ]
+    li [ class "m-2" ] [ img "" [ class "w-48", src imageUrl ] ]
 
 
 
