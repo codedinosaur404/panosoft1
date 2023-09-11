@@ -4,7 +4,7 @@ import Accessibility exposing (Html, button, div, h2, img, li, span, text, ul)
 import Browser
 import Dict exposing (Dict)
 import Html as CoreHtml exposing (aside, main_)
-import Html.Attributes exposing (class, disabled, src)
+import Html.Attributes exposing (class, disabled, id, src)
 import Html.Events exposing (onClick)
 import Html.Extra as Html exposing (viewIf, viewMaybe)
 import Http
@@ -51,6 +51,7 @@ type alias Model =
     { dogBreeds : Dict String DogBreedDetail
     , dogBreedResponse : WebData DogBreedApiRespnse
     , currentBreed : Maybe String
+    , isLoading : Bool
     }
 
 
@@ -64,6 +65,7 @@ initialModel =
     { dogBreeds = Dict.empty
     , dogBreedResponse = RemoteData.NotAsked
     , currentBreed = Nothing
+    , isLoading = True
     }
 
 
@@ -92,13 +94,14 @@ update msg model =
                     ( { model
                         | dogBreedResponse = response
                         , dogBreeds = transformDictionary result.dogBreedsApiResponse
+                        , isLoading = False
                       }
                     , Cmd.none
                     )
 
                 --ToDo develop Error case messaing views
                 _ ->
-                    ( model, Cmd.none )
+                    ( { model | isLoading = False }, Cmd.none )
 
         ChangeBreed breed ->
             let
@@ -108,18 +111,18 @@ update msg model =
                         |> Maybe.withDefault True
             in
             if exactyOneApiRequestPerBreed then
-                ( { model | currentBreed = Just breed }, fetchDogBreedImages breed )
+                ( { model | currentBreed = Just breed, isLoading = True }, fetchDogBreedImages breed )
 
             else
-                ( { model | currentBreed = Just breed }, Cmd.none )
+                ( { model | currentBreed = Just breed, isLoading = False }, Cmd.none )
 
         GotBreedImageUrls response ->
             case model.currentBreed of
                 Just breed ->
-                    ( { model | dogBreeds = insertDogBreedDetail ( breed, response ) model.dogBreeds }, Cmd.none )
+                    ( { model | dogBreeds = insertDogBreedDetail ( breed, response ) model.dogBreeds, isLoading = False }, Cmd.none )
 
                 Nothing ->
-                    ( model, Cmd.none )
+                    ( { model | isLoading = False }, Cmd.none )
 
         Navigate direction ->
             case direction of
@@ -232,8 +235,12 @@ keysList dict =
 
 view : Model -> Html Msg
 view model =
-    main_ []
-        [ h2 [ class "text-4xl text-center" ] [ text "Dog Breeds" ]
+    main_ [ class "content" ]
+        [ viewIf model.isLoading
+            (div [ class "overlay" ]
+                [ div [ class "flex justify-center items-center h-screen" ] [ text "Loading..." ] ]
+            )
+        , h2 [ class "text-4xl text-center" ] [ text "Dog Breeds" ]
         , div [ class "flex flex-row items-start justify-center" ]
             [ aside [ class "w-64" ]
                 [ div [ class "p-4" ]
