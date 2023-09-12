@@ -74,6 +74,7 @@ type Direction
     | Backward
 
 
+
 -- UPDATE
 
 
@@ -238,25 +239,23 @@ view model =
             (div [ class "overlay" ]
                 [ div [ class "flex justify-center items-center h-screen" ] [ text "Loading..." ] ]
             )
-        , div [] [ 
-             h1 [ class "text-4xl text-center" ] [ text "Dog Breeds" ] 
+        , div []
+            [ h1 [ class "text-4xl text-center" ] [ text "Dog Breeds" ]
             , viewMaybe totalCountView (getDogBreedDetail model.currentBreed model.dogBreeds)
-        ]
-        , div [ class "flex"] [
-         aside [ class "w-64 flex flex-row" ]
-                [ 
-                     model.dogBreeds
-                        |> keysList
-                        |> List.sort
-                        |> List.map (\x -> dogBreedItemView x (Dict.get x model.dogBreeds))
-                        |> ul []
-                    
-                ]
-        , div [ class "flex flex-col items-center gap-8"] [
-             viewMaybe dogBreedDetailView (getDogBreedDetail model.currentBreed model.dogBreeds)
-            , viewMaybe paginationButtonsView (getDogBreedDetail model.currentBreed model.dogBreeds)
             ]
-        ]
+        , div [ class "flex" ]
+            [ aside [ class "w-64 flex flex-row" ]
+                [ model.dogBreeds
+                    |> keysList
+                    |> List.sort
+                    |> List.map (\x -> dogBreedItemView x (Dict.get x model.dogBreeds))
+                    |> ul []
+                ]
+            , div [ class "flex flex-col items-center gap-8" ]
+                [ viewMaybe dogBreedDetailView (getDogBreedDetail model.currentBreed model.dogBreeds)
+                , viewMaybe paginationButtonsView (getDogBreedDetail model.currentBreed model.dogBreeds)
+                ]
+            ]
         ]
 
 
@@ -299,36 +298,37 @@ subBreedItemView breed subBreed =
 
 dogBreedDetailView : DogBreedDetail -> Html Msg
 dogBreedDetailView detail =
-           detail
-                |> getImageSlice
-                |> List.map subBreedImageView
-                |> ul [ class "grid grid-cols-5 gap-4"]
-        
+    detail
+        |> getImageSlice
+        |> List.map subBreedImageView
+        |> ul [ class "grid grid-cols-5 gap-4" ]
+
 
 totalCountView : DogBreedDetail -> Html msg
 totalCountView detail =
-    div [] [
-        span [ class "mr-2" ] [ text <| "Total Image Count:" ]
+    div []
+        [ span [ class "mr-2" ] [ text <| "Total Image Count:" ]
         , span [] [ text <| (String.fromInt <| List.length detail.imageUrls) ]
-    ]
+        ]
+
 
 paginationButtonsView : DogBreedDetail -> Html Msg
-paginationButtonsView detail = 
-    span [ class "" ] [ 
-             button
-                [ disabled <| detail.currentPage == 1 || detail.breedDetailResponse == RemoteData.Loading
-                , onClick <| Navigate Backward
-                , class ""
-                ]
-                [ text "back" ]
-            , span [ class "mx-4" ] [ text <| "Current Page: " ++ String.fromInt detail.currentPage ]
-            , button
-                [ disabled <| detail.currentPage == detail.totalPages || detail.breedDetailResponse == RemoteData.Loading
-                , onClick <| Navigate Forward
-                , class ""
-                ]
-                [ text "forward" ]
-    ]
+paginationButtonsView detail =
+    span [ class "" ]
+        [ button
+            [ disabled <| detail.currentPage == 1 || detail.breedDetailResponse == RemoteData.Loading
+            , onClick <| Navigate Backward
+            , class ""
+            ]
+            [ text "back" ]
+        , span [ class "mx-4" ] [ text <| "Current Page: " ++ String.fromInt detail.currentPage ]
+        , button
+            [ disabled <| detail.currentPage == detail.totalPages || detail.breedDetailResponse == RemoteData.Loading
+            , onClick <| Navigate Forward
+            , class ""
+            ]
+            [ text "forward" ]
+        ]
 
 
 getImageSlice : DogBreedDetail -> List String
