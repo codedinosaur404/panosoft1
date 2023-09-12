@@ -4,7 +4,7 @@ import Accessibility exposing (Html, button, div, h1, img, li, span, text, ul)
 import Browser
 import Dict exposing (Dict)
 import Html as CoreHtml exposing (aside, main_)
-import Html.Attributes exposing (class, disabled, id, src)
+import Html.Attributes exposing (class, disabled, src)
 import Html.Events exposing (onClick)
 import Html.Extra as Html exposing (viewIf, viewMaybe)
 import Http
