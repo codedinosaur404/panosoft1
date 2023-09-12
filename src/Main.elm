@@ -318,16 +318,16 @@ paginationButtonsView detail =
         [ button
             [ disabled <| detail.currentPage == 1 || detail.breedDetailResponse == RemoteData.Loading
             , onClick <| Navigate Backward
-            , class ""
+            , class "bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l disabled:bg-gray-100"
             ]
             [ text "back" ]
         , span [ class "mx-4" ] [ text <| "Current Page: " ++ String.fromInt detail.currentPage ]
         , button
             [ disabled <| detail.currentPage == detail.totalPages || detail.breedDetailResponse == RemoteData.Loading
             , onClick <| Navigate Forward
-            , class ""
+            , class "bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l disabled:bg-gray-100"
             ]
-            [ text "forward" ]
+            [ text "next" ]
         ]
 
 
