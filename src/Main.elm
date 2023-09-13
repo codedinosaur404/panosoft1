@@ -51,7 +51,6 @@ type alias Model =
     { dogBreeds : Dict String DogBreedDetail
     , dogBreedResponse : WebData DogBreedApiRespnse
     , currentBreed : Maybe String
-    , isLoading : Bool
     }
 
 
@@ -65,7 +64,6 @@ initialModel =
     { dogBreeds = Dict.empty
     , dogBreedResponse = RemoteData.NotAsked
     , currentBreed = Nothing
-    , isLoading = True
     }
 
 
@@ -94,13 +92,12 @@ update msg model =
                     ( { model
                         | dogBreedResponse = response
                         , dogBreeds = transformDictionary result.dogBreedsApiResponse
-                        , isLoading = False
                       }
                     , Cmd.none
                     )
 
                 _ ->
-                    ( { model | isLoading = False }, Cmd.none )
+                    ( model, Cmd.none )
 
         ChangeBreed breed ->
             let
@@ -110,18 +107,18 @@ update msg model =
                         |> Maybe.withDefault True
             in
             if exactyOneApiRequestPerBreed then
-                ( { model | currentBreed = Just breed, isLoading = True }, fetchDogBreedImages breed )
+                ( { model | currentBreed = Just breed }, fetchDogBreedImages breed )
 
             else
-                ( { model | currentBreed = Just breed, isLoading = False }, Cmd.none )
+                ( { model | currentBreed = Just breed }, Cmd.none )
 
         GotBreedImageUrls response ->
             case model.currentBreed of
                 Just breed ->
-                    ( { model | dogBreeds = insertDogBreedDetail ( breed, response ) model.dogBreeds, isLoading = False }, Cmd.none )
+                    ( { model | dogBreeds = insertDogBreedDetail ( breed, response ) model.dogBreeds }, Cmd.none )
 
                 Nothing ->
-                    ( { model | isLoading = False }, Cmd.none )
+                    ( model , Cmd.none )
 
         Navigate direction ->
             case direction of
@@ -140,6 +137,18 @@ update msg model =
 
                         Nothing ->
                             ( model, Cmd.none )
+
+
+isLoadingImageUrls : Dict String DogBreedDetail -> Bool
+isLoadingImageUrls breeds =
+    breeds
+        |> Dict.values
+        |> List.any isLoading
+
+
+isLoading : DogBreedDetail -> Bool
+isLoading detail =
+    detail.breedDetailResponse == RemoteData.Loading
 
 
 adjustPageNumber : (Int -> Int) -> { r | currentPage : Int } -> { r | currentPage : Int }
@@ -235,7 +244,7 @@ keysList dict =
 view : Model -> Html Msg
 view model =
     main_ [ class "content" ]
-        [ viewIf model.isLoading
+        [ viewIf (isLoadingImageUrls model.dogBreeds || model.dogBreedResponse == RemoteData.Loading)
             (div [ class "overlay" ]
                 [ div [ class "flex justify-center items-center h-screen" ] [ text "Loading..." ] ]
             )
