@@ -44,14 +44,14 @@ validateEditablePerson =
         ]
 
 
-fromEditable : EditablePerson -> Result (List String) ValidPerson
+fromEditable : EditablePerson -> Result (List Error) ValidPerson
 fromEditable edit =
     case validate validateEditablePerson edit of
         Ok valid2 ->
             Ok (valid2 |> fromValid |> (\e -> ValidPerson (FirstName e.firstName) (ZipCode e.zipCode)))
 
         Err errors ->
-            Err (List.map (\( _, str ) -> str) errors)
+            Err errors
 
 
 someCustomLogicValidator : (subject -> String) -> error -> Validator error subject
