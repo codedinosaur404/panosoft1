@@ -1,7 +1,7 @@
 module ValidatedPerson exposing (..)
 
 import Regex
-import Validate exposing (..)
+import Validate exposing (validate, ifBlank, ifTrue, fromValid, Validator)
 
 
 type PersonFormField
@@ -38,8 +38,8 @@ validateEditablePerson =
     Validate.all
         [ ifBlank .firstName ( FirstNameField, "First Name can't be blank" )
         , Validate.firstError
-            [ ifBlank .zipCode ( ZipCodeField, "Last Name can't be blank" )
-            , someCustomLogicValidator .zipCode ( ZipCodeField, "Some custom failure" )
+            [ ifBlank .zipCode ( ZipCodeField, "Zip Code can't be blank" )
+            , someCustomLogicValidator .zipCode ( ZipCodeField, "Some Custom Zip Code Failure" )
             ]
         ]
 
@@ -47,9 +47,9 @@ validateEditablePerson =
 fromEditable : EditablePerson -> Result (List Error) ValidPerson
 fromEditable edit =
     case validate validateEditablePerson edit of
-        Ok valid2 ->
-            Ok (valid2 |> fromValid |> (\e -> ValidPerson (FirstName e.firstName) (ZipCode e.zipCode)))
-
+        Ok validEditablePerson ->
+            Ok (validEditablePerson |> fromValid |> (\e -> ValidPerson (FirstName e.firstName) (ZipCode e.zipCode)))
+                --Library has a concept of Valid a
         Err errors ->
             Err errors
 
