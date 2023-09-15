@@ -56,7 +56,7 @@ fromEditable edit =
 
 someCustomLogicValidator : (subject -> String) -> error -> Validator error subject
 someCustomLogicValidator subjectToString error =
-    ifTrue (\subject -> isInvalidZipCode <| subjectToString subject) error
+    ifTrue (\subject -> subject |> subjectToString >> isInvalidZipCode) error
 
 
 isInvalidZipCode : String -> Bool
