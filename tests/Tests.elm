@@ -1,9 +1,10 @@
-module Example exposing (..)
+module Tests exposing (..)
 
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, list, string)
 import Main exposing (getIndicesFromPage, slice)
 import Test exposing (..)
+
 
 
 indicesTest : Test
@@ -43,3 +44,5 @@ paginationTest =
 listOfThirtyFive : List String
 listOfThirtyFive =
     List.repeat 35 "imageUrl"
+
+
